@@ -403,7 +403,7 @@ fn print_statements(opts: PrintOpts, statements: Vec<Statement>) {
 
     if opts.hide_statement {
         for s in statements {
-            writeln!(lock, "{:?}{:?}{:?}{:?}{:?}{:?}{:?}{:?}{:?}",
+            writeln!(lock, "{}{}{}{}{}{}{}{}{}",
                 s.file_path.display(), del,
                 s.begin, del,
                 s.end, del,
@@ -415,7 +415,7 @@ fn print_statements(opts: PrintOpts, statements: Vec<Statement>) {
     }
 
     for s in statements {
-        writeln!(lock, "{:?}{:?}{:?}{:?}{:?}{:?}{:?}{:?}{:?}{:?}{:?}",
+        writeln!(lock, "{}{}{}{}{}{}{}{}{}{}{}",
             s.file_path.display(), del,
             s.begin, del,
             s.end, del,
@@ -534,7 +534,7 @@ fn main() {
         let stdout   = std::io::stdout();
         let mut lock = stdout.lock();
         for f in matched_files.iter() {
-            writeln!(lock, "{:?}", f.display()).unwrap();
+            writeln!(lock, "{}", f.display()).unwrap();
         }
         return;
     }

@@ -55,3 +55,46 @@ Example:\
   omitting the statement-type or specifying '*' from the search-query will
   search for all statement-types except `SELECT` (i.e. all statements that
   modify the given table).
+
+#### Caveat
+
+There are a couple of assummptions currently being made that are linguistically
+enforced by SQL itself, which means that there are a handful of forms that
+this this program will currently not find.
+
+1) Statements do not contain empty lines.\
+   The following statement would not be matched:
+   ```sql
+    UPDATE ord
+    SET status = 'CANCELLED'
+
+    FROM orders ord
+    WHERE ord.id = 1;
+   ```
+2) UPDATE and DELETE statements are operating on the tables directly after the
+    FROM clause (and not on any of the joined tables).\
+    Given the following search query: `u:orders`:
+    ```sql
+    -- this would be matched
+    UPDATE ord
+    SET status = 'CANCELLED'
+    FROM orders ord
+      INNER JOIN customers cst
+        ON	ord.customer_id = cst.id
+    WHERE ord.id = 1;
+
+    -- this would *not* be matched
+    UPDATE ord
+    SET status = 'CANCELLED'
+    FROM customers cst
+      INNER JOIN orders ord
+        ON	cst.id = ord.customer_id
+    WHERE cst.id = 1;
+    ```
+
+Matching such statements is on the roadmap, because the author's coding style
+preferences are not to be held above making this program as robust as possible :)\
+If the (T)SQL is valid*, this program aims to support it.
+
+    *The author reserves the right to hold-off on supporting implicit
+    joins until a particularly rainy day...

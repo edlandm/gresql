@@ -204,7 +204,6 @@ fn get_path_type(path: &Path) -> Option<PathType> {
     }
 }
 
-// TODO: this appeared to run super slow, investigate
 fn get_file_paths(strings: &Vec<OsString>) -> HashSet<PathBuf> {
     // return a vector of resolved path buffers from a vector of strings, of
     // which each string could be a file, a symlink, a directory, or a glob

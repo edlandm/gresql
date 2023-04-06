@@ -23,7 +23,7 @@ If a directory is given in FILE_PATHS, then all .sql files in the directory
 are processed.
 
 ### Search queries
-A search queury is a a string consisting of two parts separated by a colon.
+A search query is a a string consisting of two parts separated by a colon.
 The first part is the statement type(s) represented by a single character.
 The second part is the table(s) to search for (separated by commas).
 
@@ -58,7 +58,7 @@ Example:\
 
 #### Caveat
 
-There are a couple of assummptions currently being made that are linguistically
+There are a couple of assumptions currently being made that are linguistically
 enforced by SQL itself, which means that there are a handful of forms that
 this this program will currently not find.
 
@@ -71,9 +71,16 @@ this this program will currently not find.
     FROM orders ord
     WHERE ord.id = 1;
    ```
-2) UPDATE and DELETE statements are operating on the tables directly after the
-    FROM clause (and not on any of the joined tables).\
-    Given the following search query: `u:orders`:
+2)  **UPDATE:** Support for this form has been added in v0.1.1.\
+    ~~UPDATE and DELETE statements targeting tables directly after the
+    FROM clause (and not on any of the joined tables).~~
+    ```
+    UPDATE customers SET free_shipping = 1 WHERE id = @my_id
+    ```
+3)  **UPDATE:** Support for this form has been added in v0.1.1.\
+    ~~Updates where the target table is not the table associated with the FROM
+    keyword.~~\
+    e.g. Given the following search query: `u:orders`:
     ```sql
     -- this would be matched
     UPDATE ord
@@ -91,6 +98,7 @@ this this program will currently not find.
         ON	cst.id = ord.customer_id
     WHERE cst.id = 1;
     ```
+    ~~
 
 Matching such statements is on the roadmap, because the author's coding style
 preferences are not to be held above making this program as robust as possible :)\

@@ -76,6 +76,41 @@ pub enum StatementType {
     Merge,
 }
 
+impl StatementType {
+    fn find_table(&self, s: &str) -> Option<String> {
+        let has_from: bool = s.to_string().to_lowercase().contains("from");
+        let re = match self {
+            StatementType::Insert => {
+                Regex::new(r"\b(?i:into)\s+([@#[:alnum:]_]+)").expect("regex didn't compile")
+            },
+            StatementType::Merge => {
+                Regex::new(r"\b(?i:merge)\s+([@#[:alnum:]_]+)").expect("regex didn't compile")
+            },
+            StatementType::Delete if !has_from => {
+                Regex::new(r"\b(?i:delete)\s+([@#[:alnum:]_]+)").expect("regex didn't compile")
+            },
+            StatementType::Select | StatementType::Delete => {
+                Regex::new(r"\b(?i:from)\s+([@#[:alnum:]_]+)").expect("regex didn't compile")
+            },
+            StatementType::Update if !has_from => {
+                Regex::new(r"\b(?i:update)\s+([@#[:alnum:]_]+)").expect("regex didn't compile")
+            },
+            StatementType::Update => {
+                // There are two possible forms here:
+                //   UPDATE <a> ... FROM <table> <a> WHERE ...
+                //   UPDATE <b> ... FROM <table> <a> INNER JOIN <table_2> <b> WHERE ...
+                // We need to find the target of the update statement based on
+                // the alias
+                let re = Regex::new(r"\b(?i:update)\s+([@#[:alnum:]_]+)").expect("regex didn't compile");
+                let target = re.captures(&s)?.get(1)?.as_str().to_string();
+                let exp = format!(r"\b(?i:update)\s+{}.*?\b(?i:from|join)\s+([@#[:alnum:]_]+)\s+{}", &target, &target);
+                Regex::new(&exp).expect("regex didn't compile")
+            }
+        };
+        Some(re.captures(&s)?.get(1)?.as_str().to_string())
+    }
+}
+
 // implement try_from &char for StatementType
 impl TryFrom<char> for StatementType {
     type Error = ();
@@ -274,46 +309,6 @@ fn find_statements(file_path: &PathBuf, search_query: &SearchQuery) -> Option<Ve
         None
     };
 
-    let parse_table = |statement_type: &StatementType, s: &str| -> Option<String> {
-        let re = match statement_type {
-            StatementType::Insert => {
-                Regex::new(r"\b(?i:into)\s+([@#[:alnum:]_]+)").expect("regex didn't compile")
-            },
-            StatementType::Select | StatementType::Update | StatementType::Delete => {
-                Regex::new(r"\b(?i:from)\s+([@#[:alnum:]_]+)").expect("regex didn't compile")
-            },
-            StatementType::Merge => {
-                Regex::new(r"\b(?i:merge)\s+([@#[:alnum:]_]+)").expect("regex didn't compile")
-            },
-        };
-
-        if let Some(capts) = re.captures(&s) {
-            match capts.get(1) {
-                Some(table) => Some(table.as_str().to_string()),
-                None => None
-            }
-        } else {
-            // TODO: I'm sure there's a way to reduce the code duplication here
-            match statement_type {
-                StatementType::Update => {
-                    let re2 = Regex::new(r"\b(?i:update)\s+([@#[:alnum:]_]+)").expect("regex didn't compile");
-                    match re2.captures(&s) {
-                        Some(capts) => Some(capts.get(1).unwrap().as_str().to_string()),
-                        None => None
-                    }
-                },
-                StatementType::Delete => {
-                    let re2 = Regex::new(r"\b(?i:delete)\s+([@#[:alnum:]_]+)").expect("regex didn't compile");
-                    match re2.captures(&s) {
-                        Some(capts) => Some(capts.get(1).unwrap().as_str().to_string()),
-                        None => None
-                    }
-                },
-                _ => None
-            }
-        }
-    };
-
     let trim_comment = |s: String| -> String {
         match s.find("--") {
             Some(i) => s[..i].to_string(),
@@ -373,13 +368,13 @@ fn find_statements(file_path: &PathBuf, search_query: &SearchQuery) -> Option<Ve
                     if is_more_to_read { continue; }
                 }
 
-                if let Some(table) = parse_table(&statement_type, &statement_text) {
+                if let Some(table) = &statement_type.find_table(&statement_text) {
                     if search_query.tables.contains(&table) {
                         statements.push(Statement {
                             file_path:      file_path.to_path_buf(),
-                            statement_type: statement_type,
-                            table:          table,
-                            begin:          begin,
+                            statement_type,
+                            table:          table.to_string(),
+                            begin,
                             end:            i.try_into().expect("i should be positive by the time the loop starts"),
                             text:           statement_text,
                         });
